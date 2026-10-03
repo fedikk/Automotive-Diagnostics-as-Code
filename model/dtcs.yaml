@@ -1,0 +1,15 @@
+dtcs:
+  - id: P0300
+    name: Random Misfire
+    description: Random or multiple cylinder misfire detected
+    severity: warning
+
+  - id: U0100
+    name: Lost Communication With ECM
+    description: Communication with the engine control module was lost
+    severity: critical
+
+  - id: U0121
+    name: Lost Communication With ABS
+    description: Communication with the ABS control module was lost
+    severity: warning

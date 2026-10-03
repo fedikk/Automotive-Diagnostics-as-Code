@@ -1,0 +1,13 @@
+ecu:
+  id: virtual-ecu
+  name: Virtual Diagnostic ECU
+  description: Virtual ECU used for the Automotive Diagnostics as Code PoC
+
+  diagnostic:
+    addressing:
+      type: virtual
+
+    sessions:
+      default: 0x01
+      programming: 0x02
+      extended: 0x03

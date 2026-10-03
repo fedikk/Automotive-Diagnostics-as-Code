@@ -1,0 +1,36 @@
+dids:
+  - id: VIN
+    uds_did: 0xF190
+    name: Vehicle Identification Number
+    description: Vehicle identification number
+    data_type: string
+    length: 17
+    access:
+      read: true
+
+  - id: SPARE_PART_NUMBER
+    uds_did: 0xF187
+    name: ECU Spare Part Number
+    description: ECU spare part number
+    data_type: string
+    length: 10
+    access:
+      read: true
+
+  - id: ECU_SERIAL_NUMBER
+    uds_did: 0xF18C
+    name: ECU Serial Number
+    description: ECU serial number
+    data_type: string
+    length: 12
+    access:
+      read: true
+
+  - id: ECU_SOFTWARE_VERSION
+    uds_did: 0xF191
+    name: ECU Software Version
+    description: ECU software version
+    data_type: string
+    length: 16
+    access:
+      read: true

@@ -1,0 +1,25 @@
+services:
+  - id: diagnostic-session-control
+    name: Diagnostic Session Control
+    uds_sid: 0x10
+    enabled: true
+
+  - id: ecu-reset
+    name: ECU Reset
+    uds_sid: 0x11
+    enabled: true
+
+  - id: clear-diagnostic-information
+    name: Clear Diagnostic Information
+    uds_sid: 0x14
+    enabled: true
+
+  - id: read-dtc-information
+    name: Read DTC Information
+    uds_sid: 0x19
+    enabled: true
+
+  - id: read-data-by-identifier
+    name: Read Data By Identifier
+    uds_sid: 0x22
+    enabled: true
