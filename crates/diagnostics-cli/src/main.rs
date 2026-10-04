@@ -30,70 +30,71 @@ fn main() -> ExitCode {
 }
 
 fn validate_model() -> ExitCode {
-    let model_dir = Path::new("model");
+    match validate_model_result() {
+        Ok(()) => {
+            println!("Diagnostic model is valid.");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("ERROR: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+
+fn validate_model_result() -> Result<(), String> {
+    let model_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../model");
 
     println!("Validating diagnostic model...");
 
-    let ecu = match load_ecu(model_dir.join("ecu.yaml")) {
-        Ok(model) => model,
-        Err(error) => {
-            eprintln!("ERROR: failed to load ecu.yaml: {error}");
-            return ExitCode::FAILURE;
-        }
-    };
+    let ecu = load_ecu(model_dir.join("ecu.yaml"))
+        .map_err(|error| format!("failed to load ecu.yaml: {error}"))?;
 
-    if let Err(error) = validate_ecu(&ecu) {
-        eprintln!("ERROR: ECU validation failed: {error}");
-        return ExitCode::FAILURE;
-    }
+    validate_ecu(&ecu)
+        .map_err(|error| format!("ECU validation failed: {error}"))?;
 
-    let services = match load_services(model_dir.join("services.yaml")) {
-        Ok(model) => model,
-        Err(error) => {
-            eprintln!("ERROR: failed to load services.yaml: {error}");
-            return ExitCode::FAILURE;
-        }
-    };
+    let services = load_services(model_dir.join("services.yaml"))
+        .map_err(|error| format!("failed to load services.yaml: {error}"))?;
 
-    if let Err(error) = validate_services(&services) {
-        eprintln!("ERROR: services validation failed: {error}");
-        return ExitCode::FAILURE;
-    }
+    validate_services(&services)
+        .map_err(|error| format!("services validation failed: {error}"))?;
 
-    let dids = match load_dids(model_dir.join("dids.yaml")) {
-        Ok(model) => model,
-        Err(error) => {
-            eprintln!("ERROR: failed to load dids.yaml: {error}");
-            return ExitCode::FAILURE;
-        }
-    };
+    let dids = load_dids(model_dir.join("dids.yaml"))
+        .map_err(|error| format!("failed to load dids.yaml: {error}"))?;
 
-    if let Err(error) = validate_dids(&dids) {
-        eprintln!("ERROR: DIDs validation failed: {error}");
-        return ExitCode::FAILURE;
-    }
+    validate_dids(&dids)
+        .map_err(|error| format!("DIDs validation failed: {error}"))?;
 
-    let dtcs = match load_dtcs(model_dir.join("dtcs.yaml")) {
-        Ok(model) => model,
-        Err(error) => {
-            eprintln!("ERROR: failed to load dtcs.yaml: {error}");
-            return ExitCode::FAILURE;
-        }
-    };
+    let dtcs = load_dtcs(model_dir.join("dtcs.yaml"))
+        .map_err(|error| format!("failed to load dtcs.yaml: {error}"))?;
 
-    if let Err(error) = validate_dtcs(&dtcs) {
-        eprintln!("ERROR: DTCs validation failed: {error}");
-        return ExitCode::FAILURE;
-    }
+    validate_dtcs(&dtcs)
+        .map_err(|error| format!("DTCs validation failed: {error}"))?;
 
-    println!("Diagnostic model is valid.");
-
-    ExitCode::SUCCESS
+    Ok(())
 }
+
 
 fn print_help() {
     println!("Automotive Diagnostics as Code");
     println!();
     println!("Usage:");
     println!("  cargo run -p diagnostics-cli -- validate");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diagnostic_model_validation_succeeds() {
+        let result = validate_model_result();
+
+        assert!(
+            result.is_ok(),
+            "diagnostic model should be valid: {result:?}"
+        );
+    }
 }
