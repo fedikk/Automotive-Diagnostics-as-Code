@@ -34,6 +34,45 @@ impl TryFrom<u8> for UdsService {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UdsNrc {
+    GeneralReject,
+    ServiceNotSupported,
+    SubFunctionNotSupported,
+    IncorrectMessageLengthOrInvalidFormat,
+    ConditionsNotCorrect,
+    RequestOutOfRange,
+}
+
+impl UdsNrc {
+    pub fn code(self) -> u8 {
+        match self {
+            Self::GeneralReject => 0x10,
+            Self::ServiceNotSupported => 0x11,
+            Self::SubFunctionNotSupported => 0x12,
+            Self::IncorrectMessageLengthOrInvalidFormat => 0x13,
+            Self::ConditionsNotCorrect => 0x22,
+            Self::RequestOutOfRange => 0x31,
+        }
+    }
+}
+
+impl TryFrom<u8> for UdsNrc {
+    type Error = ();
+
+    fn try_from(code: u8) -> Result<Self, Self::Error> {
+        match code {
+            0x10 => Ok(Self::GeneralReject),
+            0x11 => Ok(Self::ServiceNotSupported),
+            0x12 => Ok(Self::SubFunctionNotSupported),
+            0x13 => Ok(Self::IncorrectMessageLengthOrInvalidFormat),
+            0x22 => Ok(Self::ConditionsNotCorrect),
+            0x31 => Ok(Self::RequestOutOfRange),
+            _ => Err(()),
+        }
+    }
+}
+
 pub const SID_DIAGNOSTIC_SESSION_CONTROL: u8 = 0x10;
 pub const SID_ECU_RESET: u8 = 0x11;
 pub const SID_CLEAR_DIAGNOSTIC_INFORMATION: u8 = 0x14;
@@ -87,5 +126,48 @@ mod tests {
     #[test]
     fn unsupported_sid_is_rejected() {
         assert!(UdsService::try_from(0x99).is_err());
+    }
+
+    #[test]
+    fn nrc_returns_correct_code() {
+        assert_eq!(UdsNrc::GeneralReject.code(), 0x10);
+        assert_eq!(UdsNrc::ServiceNotSupported.code(), 0x11);
+        assert_eq!(UdsNrc::SubFunctionNotSupported.code(), 0x12);
+        assert_eq!(
+            UdsNrc::IncorrectMessageLengthOrInvalidFormat.code(),
+            0x13
+        );
+        assert_eq!(UdsNrc::ConditionsNotCorrect.code(), 0x22);
+        assert_eq!(UdsNrc::RequestOutOfRange.code(), 0x31);
+    }
+
+    #[test]
+    fn nrc_code_converts_to_nrc() {
+        assert_eq!(UdsNrc::try_from(0x10), Ok(UdsNrc::GeneralReject));
+        assert_eq!(
+            UdsNrc::try_from(0x11),
+            Ok(UdsNrc::ServiceNotSupported)
+        );
+        assert_eq!(
+            UdsNrc::try_from(0x12),
+            Ok(UdsNrc::SubFunctionNotSupported)
+        );
+        assert_eq!(
+            UdsNrc::try_from(0x13),
+            Ok(UdsNrc::IncorrectMessageLengthOrInvalidFormat)
+        );
+        assert_eq!(
+            UdsNrc::try_from(0x22),
+            Ok(UdsNrc::ConditionsNotCorrect)
+        );
+        assert_eq!(
+            UdsNrc::try_from(0x31),
+            Ok(UdsNrc::RequestOutOfRange)
+        );
+    }
+
+    #[test]
+    fn unsupported_nrc_is_rejected() {
+        assert!(UdsNrc::try_from(0x99).is_err());
     }
 }
