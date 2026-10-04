@@ -2,193 +2,306 @@
 
 ## 1. Purpose
 
-This document describes the high-level architecture of the Automotive Diagnostics as Code proof-of-concept.
+The Automotive Diagnostics as Code project is a model-driven diagnostic platform for experimenting with automotive diagnostic technologies including UDS and SOVD.
 
-The architecture is designed around a central principle:
+The system uses a version-controlled diagnostic model as its single source of truth.
 
-> The diagnostic model is the source of truth for the diagnostic system.
+The core implementation is written in Rust and organized as a Cargo workspace.
 
-Instead of maintaining diagnostic information independently across multiple tools and artifacts, the project aims to represent the core diagnostic definition in a version-controlled model.
+---
 
-## 2. High-Level Architecture
+## 2. Core Architecture
 
 ```mermaid
 flowchart TD
 
-    A[Git Repository] --> B[Diagnostic Model]
+    G[Git Repository]
 
-    B --> C[Validation]
+    M[Diagnostic Model<br/>YAML]
 
-    C --> D[Generator]
+    C[Diagnostic Core<br/>Rust]
 
-    D --> E[UDS]
-    D --> F[SOVD]
+    V[Model Validation]
 
-    E --> G[Virtual ECU]
-    F --> G
+    CLI[Diagnostics CLI<br/>Rust]
 
-    G --> H[Automated Tests]
+    U[UDS Layer]
 
-    H --> I[CI/CD]
+    S[SOVD Layer]
 
-    I --> J[Metrics]
+    E[Virtual ECU]
 
-    J --> K[Grafana]
+    T[Automated Tests]
+
+    CI[CI/CD<br/>GitHub Actions]
+
+    O[Observability]
+
+    GR[Grafana]
+
+    G --> M
+    M --> C
+
+    C --> V
+    C --> CLI
+
+    CLI --> U
+    CLI --> S
+
+    U --> E
+    S --> E
+
+    E --> T
+    T --> CI
+
+    E --> O
+    O --> GR
 ```
 
-## 3. Main Components
+---
 
-### 3.1 Diagnostic Model
+## 3. Architectural Principle
 
-The diagnostic model contains the definition of the virtual ECU and its diagnostic capabilities.
+The diagnostic model is the single source of truth.
 
-It will eventually describe elements such as:
+The implementation should not independently redefine diagnostic information in the UDS, SOVD, Virtual ECU, and testing layers.
 
-* ECU information
-* Diagnostic sessions
-* UDS services
-* Data Identifiers
-* Diagnostic Trouble Codes
-* Diagnostic parameters
-
-The model will be stored in a human-readable format and version-controlled with Git.
-
-### 3.2 Validation
-
-The validation layer verifies that the diagnostic model is structurally and semantically consistent before it is used by other components.
-
-Examples include:
-
-* Invalid service identifiers
-* Duplicate DIDs
-* Invalid DTC definitions
-* Missing required fields
-* Invalid parameter types
-
-### 3.3 Generator
-
-The generator consumes the diagnostic model and produces artifacts required by the different parts of the system.
-
-The generator is intended to prevent duplicated definitions across the project.
-
-### 3.4 UDS
-
-The UDS layer provides diagnostic communication based on a selected subset of ISO 14229 services.
-
-The implementation will initially focus on the services required by the PoC rather than attempting to implement the complete UDS specification.
-
-### 3.5 SOVD
-
-The SOVD layer provides a service-oriented diagnostic interface.
-
-The same underlying diagnostic model should be usable by both the UDS and SOVD interfaces.
-
-### 3.6 Virtual ECU
-
-The Virtual ECU provides a software-based environment for executing the diagnostic functionality.
-
-The purpose is to make the PoC reproducible without requiring physical automotive hardware.
-
-### 3.7 Automated Tests
-
-Tests verify the behavior of the diagnostic system.
-
-Testing will eventually cover:
-
-* Diagnostic model validation
-* UDS behavior
-* SOVD behavior
-* Integration scenarios
-* Error handling
-
-### 3.8 CI/CD
-
-GitHub Actions will automate the development workflow.
-
-The planned pipeline is:
+Instead:
 
 ```text
-Commit
-  │
-  ▼
-Validate
-  │
-  ▼
-Build
-  │
-  ▼
-Test
-  │
-  ▼
-Generate artifacts
-  │
-  ▼
-Publish results
+Diagnostic Model
+       │
+       ▼
+Diagnostic Core
+       │
+ ┌─────┼──────┐
+ ▼     ▼      ▼
+UDS   SOVD   Tests
+ │     │
+ └──┬──┘
+    ▼
+Virtual ECU
 ```
 
-### 3.9 Grafana
+This allows a diagnostic definition to be changed once and propagated consistently through the system.
 
-Grafana will provide an observability layer for the PoC.
+---
 
-Potential metrics include:
+## 4. Rust Core
 
-* UDS requests
-* UDS errors
-* Diagnostic response time
-* Active DTCs
-* SOVD requests
-* SOVD errors
-* Test results
-* CI/CD status
+Rust is the primary implementation language for the diagnostic platform.
 
-Grafana is not intended to be the source of diagnostic configuration.
+The Rust implementation is organized as a Cargo workspace.
 
-The diagnostic model remains the source of truth.
+```text
+crates/
+├── diagnostic-core/
+└── diagnostics-cli/
+```
 
-## 4. Design Principles
+### Diagnostic Core
 
-### Single Source of Truth
+`diagnostic-core` contains the reusable domain logic:
 
-Diagnostic definitions should not be duplicated unnecessarily.
+* Diagnostic model structures
+* YAML model loading
+* Model validation
+* Diagnostic identifiers
+* Services
+* Sessions
+* DIDs
+* DTCs
+* Domain-level errors
 
-### Version Control
+The core must remain independent of the CLI and protocol-specific applications.
 
-Diagnostic changes should be traceable through Git history.
+### Diagnostics CLI
 
-### Reproducibility
+`diagnostics-cli` provides the developer-facing command-line interface.
 
-A developer should be able to clone the repository and reproduce the development environment.
+Planned commands include:
 
-### Automation
+```text
+diagnostics validate
+diagnostics inspect
+diagnostics generate
+diagnostics virtual-ecu
+```
 
-Validation, generation, testing, and documentation should progressively become automated.
+The CLI consumes the diagnostic core instead of implementing diagnostic domain logic itself.
 
-### Separation of Concerns
+---
 
-The diagnostic model, diagnostic protocols, simulation, testing, CI/CD, and observability should remain separate components.
+## 5. Protocol Layers
 
-### Incremental Development
+The diagnostic model is intentionally separated from protocol implementations.
 
-Each capability should be introduced through a documented milestone.
+The initial protocol layers are:
 
-## 5. Relationship With Existing Automotive Tooling
+### UDS
 
-The PoC does not aim to replace existing automotive diagnostic or Eclipse-based development environments.
+Responsible for:
 
-Instead, it explores how Everything-as-Code principles can complement existing workflows.
+* UDS request handling
+* UDS response generation
+* Service dispatch
+* Session handling
+* DID operations
+* DTC operations
+* Protocol encoding and decoding
 
-Future iterations may investigate integration with Eclipse-based tooling and generated automotive artifacts.
+### SOVD
 
-## 6. Future Architecture
+Responsible for:
 
-The architecture will evolve as the project develops.
+* SOVD API exposure
+* Diagnostic entity discovery
+* Diagnostic information
+* Diagnostic operations
+* Mapping the diagnostic model to SOVD concepts
 
-Additional components may be introduced for:
+Both layers consume the same diagnostic core.
 
-* CAN
-* DoIP
-* ARXML
-* Diagnostic description formats
-* Eclipse integration
-* Containerized development
-* Hardware-in-the-loop testing
+---
+
+## 6. Virtual ECU
+
+The Virtual ECU provides a hardware-independent execution environment for the diagnostic system.
+
+Its purpose is to make the PoC reproducible without requiring a physical ECU.
+
+The Virtual ECU will maintain state such as:
+
+* Current diagnostic session
+* ECU state
+* DID values
+* DTC state
+* Reset state
+* Diagnostic events
+
+The Virtual ECU will later expose both UDS and SOVD interfaces.
+
+---
+
+## 7. Repository Structure
+
+The planned repository structure is:
+
+```text
+automotive-diagnostics-as-code/
+│
+├── Cargo.toml
+│
+├── crates/
+│   ├── diagnostic-core/
+│   └── diagnostics-cli/
+│
+├── model/
+│   ├── ecu.yaml
+│   ├── services.yaml
+│   ├── dids.yaml
+│   └── dtcs.yaml
+│
+├── uds/
+├── sovd/
+├── virtual-ecu/
+│
+├── tests/
+│
+├── grafana/
+│
+├── docs/
+│
+└── .github/
+    └── workflows/
+```
+
+Additional crates or applications may be introduced as the architecture evolves.
+
+---
+
+## 8. Separation of Concerns
+
+The project follows these boundaries:
+
+| Component         | Responsibility              |
+| ----------------- | --------------------------- |
+| YAML model        | Diagnostic configuration    |
+| `diagnostic-core` | Domain model and validation |
+| CLI               | Developer interaction       |
+| UDS               | UDS protocol behavior       |
+| SOVD              | SOVD API behavior           |
+| Virtual ECU       | ECU simulation              |
+| Tests             | Verification                |
+| GitHub Actions    | Automation                  |
+| Grafana           | Observability               |
+
+No component should become the source of truth for information belonging to another component.
+
+---
+
+## 9. Existing Eclipse-Based Tooling
+
+The PoC does not aim to replace existing automotive diagnostic tooling.
+
+The existing Eclipse-based solution can remain part of the engineering workflow.
+
+The long-term architecture allows diagnostic artifacts to be exchanged between the Rust-based model-driven platform and existing diagnostic tooling.
+
+Potential future integration:
+
+```text
+Git
+ │
+ ▼
+Diagnostic Model
+ │
+ ├──────────────► Rust Diagnostic Core
+ │
+ └──────────────► Eclipse-Based Tooling
+```
+
+The exact integration mechanism will be defined once the diagnostic model and required Eclipse interfaces are understood.
+
+---
+
+## 10. Technology Stack
+
+| Area             | Technology                 |
+| ---------------- | -------------------------- |
+| Core language    | Rust                       |
+| Build system     | Cargo                      |
+| Workspace        | Cargo Workspace            |
+| Diagnostic model | YAML                       |
+| UDS              | Rust implementation        |
+| SOVD             | Rust implementation        |
+| Virtual ECU      | Rust                       |
+| CLI              | Rust                       |
+| Testing          | Rust + integration tooling |
+| CI/CD            | GitHub Actions             |
+| Containers       | Docker                     |
+| Observability    | Grafana                    |
+| Documentation    | Markdown + Mermaid         |
+| Version control  | Git/GitHub                 |
+
+The architecture remains CI-platform independent even though GitHub Actions is the initial CI implementation.
+
+---
+
+## 11. Design Goals
+
+The architecture prioritizes:
+
+* Single source of truth
+* Strong typing
+* Deterministic behavior
+* Reproducible builds
+* Automated validation
+* Separation of domain and protocol logic
+* Extensibility
+* Testability
+* CI/CD integration
+* Hardware independence
+* Future embedded applicability
+
+Rust is used to provide a strong foundation for these goals while keeping the diagnostic domain independent from the transport layer.
