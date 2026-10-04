@@ -73,6 +73,36 @@ impl TryFrom<u8> for UdsNrc {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UdsSession {
+    Default,
+    Programming,
+    Extended,
+}
+
+impl UdsSession {
+    pub fn sub_function(self) -> u8 {
+        match self {
+            Self::Default => 0x01,
+            Self::Programming => 0x02,
+            Self::Extended => 0x03,
+        }
+    }
+}
+
+impl TryFrom<u8> for UdsSession {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0x01 => Ok(Self::Default),
+            0x02 => Ok(Self::Programming),
+            0x03 => Ok(Self::Extended),
+            _ => Err(()),
+        }
+    }
+}
+
 pub const SID_DIAGNOSTIC_SESSION_CONTROL: u8 = 0x10;
 pub const SID_ECU_RESET: u8 = 0x11;
 pub const SID_CLEAR_DIAGNOSTIC_INFORMATION: u8 = 0x14;
@@ -169,5 +199,27 @@ mod tests {
     #[test]
     fn unsupported_nrc_is_rejected() {
         assert!(UdsNrc::try_from(0x99).is_err());
+    }
+
+    #[test]
+    fn session_returns_correct_sub_function() {
+        assert_eq!(UdsSession::Default.sub_function(), 0x01);
+        assert_eq!(UdsSession::Programming.sub_function(), 0x02);
+        assert_eq!(UdsSession::Extended.sub_function(), 0x03);
+    }
+
+    #[test]
+    fn session_sub_function_converts_to_session() {
+        assert_eq!(UdsSession::try_from(0x01), Ok(UdsSession::Default));
+        assert_eq!(
+            UdsSession::try_from(0x02),
+            Ok(UdsSession::Programming)
+        );
+        assert_eq!(UdsSession::try_from(0x03), Ok(UdsSession::Extended));
+    }
+
+    #[test]
+    fn unsupported_session_is_rejected() {
+        assert!(UdsSession::try_from(0x04).is_err());
     }
 }
