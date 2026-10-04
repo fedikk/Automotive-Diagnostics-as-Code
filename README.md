@@ -1,3 +1,11 @@
+# Automotive Diagnostics as Code
+
+Automotive Diagnostics as Code is a proof of concept for defining, validating, testing, and eventually executing automotive diagnostic behavior from a version-controlled diagnostic model.
+
+The project focuses on **UDS, SOVD, virtual ECUs, automated validation, CI/CD, and observability** while keeping the diagnostic definition separated from the protocol implementation.
+
+---
+
 ## Current Development Status
 
 The project is currently implementing the **Rust diagnostic core** for the Automotive Diagnostics as Code PoC.
@@ -6,10 +14,11 @@ The current implementation provides:
 
 * Rust workspace managed with Cargo
 * `diagnostic-core` library crate
+* `diagnostics-cli` command-line application
 * YAML-based diagnostic model
 * ECU definition
 * Diagnostic service definitions
-* Diagnostic Session definitions
+* Diagnostic session definitions
 * DID definitions
 * DTC definitions
 * YAML model loading
@@ -19,6 +28,8 @@ The current implementation provides:
 * Validation of supported diagnostic sessions
 * Validation of supported DID data types
 * Unit tests for the diagnostic model and validation logic
+* CLI-based complete diagnostic model validation
+* GitHub Actions CI
 
 The current supported UDS services are:
 
@@ -61,9 +72,13 @@ automotive-diagnostics-as-code/
 │   │       ├── loader.rs
 │   │       ├── validation.rs
 │   │       ├── error.rs
-│   │       └── tests.rs
+│   │       ├── tests.rs
+│   │       └── model_tests.rs
 │   │
 │   └── diagnostics-cli/
+│       ├── Cargo.toml
+│       └── src/
+│           └── main.rs
 │
 ├── model/
 │   ├── ecu.yaml
@@ -80,6 +95,7 @@ automotive-diagnostics-as-code/
 │
 └── .github/
     └── workflows/
+        └── ci.yml
 ```
 
 ---
@@ -211,8 +227,43 @@ The diagnostic-core tests currently verify cases such as:
 * Duplicate DID identifiers
 * Invalid DID lengths
 * Duplicate DTC identifiers
+* Validation of the real YAML diagnostic model
+
+The CLI also contains a test that verifies the complete diagnostic model can be loaded and validated successfully.
 
 A successful test run should report all tests as passed.
+
+---
+
+## CLI Validation
+
+The project provides a CLI command for validating the complete diagnostic model.
+
+Run:
+
+```bash
+cargo run -p diagnostics-cli -- validate
+```
+
+Expected output:
+
+```text
+Validating diagnostic model...
+Diagnostic model is valid.
+```
+
+The command loads:
+
+```text
+model/ecu.yaml
+model/services.yaml
+model/dids.yaml
+model/dtcs.yaml
+```
+
+and validates them using the Rust diagnostic core.
+
+This provides a single command that can be used by developers and CI pipelines to verify the complete diagnostic configuration.
 
 ---
 
@@ -222,10 +273,12 @@ Before submitting changes, contributors should run:
 
 ```bash
 cargo check --workspace
+cargo build --workspace
 cargo test --workspace
+cargo run -p diagnostics-cli -- validate
 ```
 
-Both commands should complete successfully.
+All commands should complete successfully.
 
 A contributor should also verify that changes to the YAML model do not introduce:
 
@@ -236,7 +289,29 @@ A contributor should also verify that changes to the YAML model do not introduce
 * Invalid DID lengths
 * Invalid diagnostic configuration
 
-Future versions of the project will add a dedicated CLI validation command so contributors can validate the complete diagnostic model directly.
+---
+
+## Continuous Integration
+
+The project uses **GitHub Actions** to automatically verify the Rust workspace.
+
+The CI pipeline runs on pushes and pull requests targeting `main` or `dev`.
+
+It performs:
+
+```text
+cargo check --workspace
+cargo build --workspace
+cargo test --workspace
+```
+
+This ensures that the diagnostic model, Rust core, CLI, and tests remain buildable and valid before changes are merged.
+
+The workflow is defined in:
+
+```text
+.github/workflows/ci.yml
+```
 
 ---
 
@@ -260,16 +335,16 @@ This separation is the foundation of the **Diagnostics as Code** approach:
 
 ```text
 YAML
-  │
-  │ Diagnostic Definition
-  ▼
+ │
+ │ Diagnostic Definition
+ ▼
 Rust Diagnostic Core
-  │
-  ├── Validation
-  ├── UDS
-  ├── SOVD
-  ├── Virtual ECU
-  └── Tests
+ │
+ ├── Validation
+ ├── UDS
+ ├── SOVD
+ ├── Virtual ECU
+ └── Tests
 ```
 
 The same diagnostic definition will eventually be consumed by the UDS and SOVD implementations, avoiding duplicated diagnostic configuration.
@@ -280,7 +355,7 @@ The same diagnostic definition will eventually be consumed by the UDS and SOVD i
 
 Tests are treated as part of the diagnostic model rather than as an afterthought.
 
-The project will progressively introduce tests at several levels:
+The project will progressively introduce tests at several levels.
 
 ### Unit Tests
 
@@ -303,9 +378,13 @@ Verify diagnostic requests and responses such as:
 
 ```text
 0x10  Diagnostic Session Control
+
 0x11  ECU Reset
+
 0x14  Clear Diagnostic Information
+
 0x19  Read DTC Information
+
 0x22  Read Data By Identifier
 ```
 
@@ -329,7 +408,7 @@ Diagnostic Response
 
 ### CI Tests
 
-GitHub Actions will eventually run the complete test suite automatically for every pull request.
+GitHub Actions automatically runs the Rust workspace checks and test suite for pushes and pull requests targeting the configured branches.
 
 ---
 
@@ -349,7 +428,9 @@ After making changes:
 
 ```bash
 cargo check --workspace
+cargo build --workspace
 cargo test --workspace
+cargo run -p diagnostics-cli -- validate
 ```
 
 Then commit:
@@ -377,6 +458,7 @@ The `main` branch should remain stable, while `dev` is used for active developme
 
 * [x] Rust workspace
 * [x] `diagnostic-core` crate
+* [x] `diagnostics-cli` crate
 * [x] Diagnostic domain model
 * [x] ECU YAML definition
 * [x] Service YAML definition
@@ -385,19 +467,23 @@ The `main` branch should remain stable, while `dev` is used for active developme
 * [x] YAML model loader
 * [x] Diagnostic model errors
 * [x] Diagnostic model validation
+* [x] Duplicate identifier validation
+* [x] Supported UDS service validation
+* [x] Supported diagnostic session validation
+* [x] Supported DID data type validation
 * [x] Core unit tests
+* [x] CLI model validation command
+* [x] CLI validation test
+* [x] GitHub Actions CI
 
 ### In Progress
 
-* [ ] Diagnostics CLI
-* [ ] Model validation CLI command
 * [ ] UDS implementation
 * [ ] Virtual ECU
 * [ ] UDS integration tests
 * [ ] SOVD interface
 * [ ] SOVD integration tests
 * [ ] Cross-layer integration tests
-* [ ] GitHub Actions CI
 * [ ] Observability
 * [ ] Grafana dashboard
 * [ ] Eclipse integration
